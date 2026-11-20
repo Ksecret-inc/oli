@@ -4,18 +4,10 @@
 
 ## 👉 대시보드 열기
 
-**[대시보드 바로 보기 (claude.ai)](https://claude.ai/artifact/6gUL1gZpT5x5QYKyyeUph7)**
+**https://ksecret-inc.github.io/oli/**
 
-> 공유받은 사람만 열 수 있습니다. 링크가 열리지 않으면 저장소 관리자에게 공유를 요청하세요.
-
-GitHub에서 `index.html`을 누르면 코드만 보입니다. 비공개 저장소는 현재 플랜에서 GitHub Pages를 쓸 수 없어서, GitHub 안에서는 화면으로 볼 수 없습니다.
-
-## 내 PC에서 열기
-
-1. 위의 `index.html` → 오른쪽 위 **다운로드(Download raw file)** 버튼을 누릅니다.
-2. 받은 `index.html`을 더블클릭하면 브라우저에서 대시보드가 열립니다.
-
-PC에서 열면 [원본 구글 시트](https://docs.google.com/spreadsheets/d/1-zBK50MV6uZAbrAM4yd0IuwRC2TIXc7LE3yf2MaYs9c/edit#gid=581964629)의 최신 데이터를 자동으로 불러옵니다. 시트를 못 불러오면 파일에 들어 있는 2026-11-20 기준 데이터를 보여줍니다.
+GitHub에서 `index.html`을 누르면 코드가 보입니다. 화면은 위 주소(GitHub Pages)에서 보세요.
+[원본 구글 시트](https://docs.google.com/spreadsheets/d/1-zBK50MV6uZAbrAM4yd0IuwRC2TIXc7LE3yf2MaYs9c/edit#gid=581964629)의 최신 데이터를 자동으로 불러오고, 시트를 못 불러오면 파일에 들어 있는 2026-11-20 기준 데이터를 보여줍니다.
 
 ## 기능
 
