@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>매출 대시보드</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --hover: rgba(11,11,11,0.05);
+  --up: #006300;
+  --down: #d03b3b;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+  --q1: #cde2fb; --q2: #9ec5f4; --q3: #6da7ec; --q4: #3987e5; --q5: #256abf; --q6: #184f95; --q7: #0d366b;
+  --focus: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.06);
+    --up: #0ca30c; --down: #e66767;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+    --focus: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --hover: rgba(255,255,255,0.06);
+  --up: #0ca30c; --down: #e66767;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  --focus: #3987e5;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+}
+.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+.sub a { color: inherit; }
+.src { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+button { font: inherit; color: inherit; }
+.btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+.btn:hover { background: var(--hover); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Filters */
+.filters { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; display: grid; gap: 8px; margin-bottom: 16px; }
+.frow { display: flex; gap: 12px; align-items: baseline; }
+.flabel { flex: 0 0 40px; color: var(--ink-2); font-size: 12px; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: transparent; border-radius: 999px; padding: 3px 10px; font-size: 13px; cursor: pointer; color: var(--ink-2); }
+.chip:hover { background: var(--hover); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.chip[aria-pressed="true"] .dot { box-shadow: 0 0 0 1.5px var(--surface); }
+.factions { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--border); margin-top: 4px; }
+.hint { color: var(--muted); font-size: 12px; }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.kpi .k { color: var(--ink-2); font-size: 12px; }
+.kpi .v { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.kpi .d .up { color: var(--up); font-weight: 600; }
+.kpi .d .down { color: var(--down); font-weight: 600; }
+
+/* Cards */
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
+.card.full { grid-column: 1 / -1; }
+.chead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.chead h2 { font-size: 15px; margin: 0; }
+.chead .note { color: var(--muted); font-size: 12px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); margin: 4px 0 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+svg text { font-family: inherit; }
+.axis-label { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.val-label { fill: var(--ink-2); font-size: 11px; font-weight: 600; }
+.hit { fill: transparent; cursor: pointer; }
+.hit:hover, .hit:focus-visible { fill: var(--hover); outline: none; }
+
+/* Bar list */
+.blist { display: grid; gap: 4px; }
+.brow { display: grid; gap: 4px; padding: 6px 8px; margin: 0 -8px; border-radius: 8px; cursor: pointer; border: 0; background: transparent; text-align: left; width: calc(100% + 16px); }
+.brow:hover { background: var(--hover); }
+.brow .top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.brow .name { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brow .num { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.brow .num b { color: var(--ink); font-weight: 600; }
+.brow .track { height: 10px; }
+.brow .bar { height: 10px; border-radius: 0 4px 4px 0; transition: width .25s ease; }
+.brow.off { opacity: .35; }
+.brow.on .name { font-weight: 600; }
+
+/* Heatmap */
+.heat { display: grid; gap: 2px; font-size: 12px; overflow-x: auto; }
+.heat .hh { color: var(--ink-2); padding: 4px 6px; font-weight: 600; text-align: center; white-space: nowrap; }
+.heat .rh { color: var(--ink); padding: 0 8px 0 0; display: flex; align-items: center; white-space: nowrap; }
+.heat .cell { border: 0; border-radius: 4px; height: 44px; cursor: pointer; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600; outline-offset: 1px; }
+.heat .cell.off { opacity: .3; }
+.heat .cell.sel { outline: 2px solid var(--ink); }
+.heat .tot { color: var(--ink-2); display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+.scale { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin-top: 10px; }
+.scale .ramp { display: flex; gap: 2px; }
+.scale .ramp i { width: 20px; height: 8px; border-radius: 2px; display: block; }
+
+/* Table */
+.tablewrap { overflow-x: auto; max-height: 420px; overflow-y: auto; border-top: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 7px 10px; text-align: left; white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--axis); cursor: pointer; user-select: none; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+th[aria-sort="ascending"]::after { content: " ▲"; font-size: 9px; }
+th[aria-sort="descending"]::after { content: " ▼"; font-size: 9px; }
+tbody tr { border-bottom: 1px solid var(--grid); }
+tbody tr:hover { background: var(--hover); }
+td .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+/* Tooltip */
+#tip { position: fixed; pointer-events: none; z-index: 10; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.14); min-width: 160px; opacity: 0; transition: opacity .1s; }
+#tip.show { opacity: 1; }
+#tip .t { font-weight: 650; margin-bottom: 4px; }
+#tip .r { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-2); }
+#tip .r span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+#tip .r b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+#tip .r.total { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+#tip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+@media (max-width: 860px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  .frow { flex-direction: column; gap: 4px; }
+  .flabel { flex: none; }
+  .kpi .v { font-size: 20px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>매출 대시보드</h1>
+      <div class="sub" id="period">—</div>
+    </div>
+    <div class="src">
+      <span id="status">데이터 불러오는 중…</span>
+      <button class="btn" id="reload" type="button">시트에서 새로고침</button>
+    </div>
+  </header>
+
+  <section class="filters" aria-label="필터">
+    <div class="frow"><div class="flabel">월</div><div class="chips" id="f-month"></div></div>
+    <div class="frow"><div class="flabel">제품</div><div class="chips" id="f-product"></div></div>
+    <div class="frow"><div class="flabel">채널</div><div class="chips" id="f-channel"></div></div>
+    <div class="factions">
+      <span class="hint" id="fsummary">차트의 막대·셀을 클릭해도 필터가 걸립니다.</span>
+      <button class="btn" id="reset" type="button">필터 초기화</button>
+    </div>
+  </section>
+
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid">
+    <section class="card full">
+      <div class="chead">
+        <div>
+          <h2>월별 매출</h2>
+          <div class="note">막대를 클릭하면 해당 월만 선택됩니다</div>
+        </div>
+        <div class="seg" role="group" aria-label="색상 기준">
+          <button type="button" data-by="product" aria-pressed="true">제품별</button>
+          <button type="button" data-by="channel" aria-pressed="false">채널별</button>
+        </div>
+      </div>
+      <div class="legend" id="m-legend"></div>
+      <div id="monthly"></div>
+    </section>
+
+    <section class="card">
+      <div class="chead"><div><h2>제품별 매출</h2><div class="note">클릭해서 제품 선택</div></div></div>
+      <div class="blist" id="by-product"></div>
+    </section>
+
+    <section class="card">
+      <div class="chead"><div><h2>채널별 매출</h2><div class="note">클릭해서 채널 선택</div></div></div>
+      <div class="blist" id="by-channel"></div>
+    </section>
+
+    <section class="card full">
+      <div class="chead"><div><h2>제품 × 채널 매출</h2><div class="note">셀을 클릭하면 제품과 채널이 함께 선택됩니다 · 월 필터만 적용</div></div></div>
+      <div class="heat" id="heat"></div>
+      <div class="scale"><span>낮음</span><span class="ramp" id="ramp"></span><span>높음</span></div>
+    </section>
+
+    <section class="card full">
+      <div class="chead"><div><h2>상세 데이터</h2><div class="note" id="tcount"></div></div></div>
+      <div class="tablewrap"><table id="table"><thead></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script type="text/plain" id="seed">
+월,제품,채널,판매수량,정가(원),할인율(%),매출(원)
+2026-01,데일리 선크림,올리브영,439,19000,20,6672800
+2026-01,데일리 선크림,자사몰,209,19000,10,3573900
+2026-01,데일리 선크림,쿠팡,330,19000,20,5016000
+2026-01,데일리 선크림,아마존(해외),237,19000,0,4503000
+2026-01,진정 시카 앰플,올리브영,600,24000,0,14400000
+2026-01,진정 시카 앰플,자사몰,300,24000,10,6480000
+2026-01,진정 시카 앰플,쿠팡,487,24000,0,11688000
+2026-01,진정 시카 앰플,아마존(해외),404,24000,5,9211200
+2026-01,수분 장벽 크림,올리브영,587,28000,0,16436000
+2026-01,수분 장벽 크림,자사몰,323,28000,0,9044000
+2026-01,수분 장벽 크림,쿠팡,502,28000,0,14056000
+2026-01,수분 장벽 크림,아마존(해외),351,28000,15,8353800
+2026-01,에센셜 마스크팩(10매),올리브영,795,15000,5,11328750
+2026-01,에센셜 마스크팩(10매),자사몰,324,15000,5,4617000
+2026-01,에센셜 마스크팩(10매),쿠팡,521,15000,20,6252000
+2026-01,에센셜 마스크팩(10매),아마존(해외),422,15000,5,6013500
+2026-01,약산성 클렌징폼,올리브영,746,12000,0,8952000
+2026-01,약산성 클렌징폼,자사몰,369,12000,10,3985200
+2026-01,약산성 클렌징폼,쿠팡,497,12000,10,5367600
+2026-01,약산성 클렌징폼,아마존(해외),371,12000,0,4452000
+2026-02,데일리 선크림,올리브영,566,19000,10,9678600
+2026-02,데일리 선크림,자사몰,242,19000,10,4138200
+2026-02,데일리 선크림,쿠팡,365,19000,0,6935000
+2026-02,데일리 선크림,아마존(해외),305,19000,0,5795000
+2026-02,진정 시카 앰플,올리브영,595,24000,0,14280000
+2026-02,진정 시카 앰플,자사몰,318,24000,0,7632000
+2026-02,진정 시카 앰플,쿠팡,456,24000,15,9302400
+2026-02,진정 시카 앰플,아마존(해외),388,24000,0,9312000
+2026-02,수분 장벽 크림,올리브영,650,28000,0,18200000
+2026-02,수분 장벽 크림,자사몰,267,28000,10,6728400
+2026-02,수분 장벽 크림,쿠팡,426,28000,20,9542400
+2026-02,수분 장벽 크림,아마존(해외),439,28000,10,11062800
+2026-02,에센셜 마스크팩(10매),올리브영,921,15000,20,11052000
+2026-02,에센셜 마스크팩(10매),자사몰,394,15000,5,5614500
+2026-02,에센셜 마스크팩(10매),쿠팡,627,15000,10,8464500
+2026-02,에센셜 마스크팩(10매),아마존(해외),537,15000,0,8055000
+2026-02,약산성 클렌징폼,올리브영,715,12000,20,6864000
+2026-02,약산성 클렌징폼,자사몰,371,12000,0,4452000
+2026-02,약산성 클렌징폼,쿠팡,528,12000,10,5702400
+2026-02,약산성 클렌징폼,아마존(해외),481,12000,0,5772000
+2026-03,데일리 선크림,올리브영,741,19000,0,14079000
+2026-03,데일리 선크림,자사몰,405,19000,10,6925500
+2026-03,데일리 선크림,쿠팡,496,19000,15,8010400
+2026-03,데일리 선크림,아마존(해외),578,19000,10,9883800
+2026-03,진정 시카 앰플,올리브영,664,24000,20,12748800
+2026-03,진정 시카 앰플,자사몰,292,24000,5,6657600
+2026-03,진정 시카 앰플,쿠팡,373,24000,0,8952000
+2026-03,진정 시카 앰플,아마존(해외),342,24000,5,7797600
+2026-03,수분 장벽 크림,올리브영,506,28000,5,13459600
+2026-03,수분 장벽 크림,자사몰,246,28000,0,6888000
+2026-03,수분 장벽 크림,쿠팡,314,28000,20,7033600
+2026-03,수분 장벽 크림,아마존(해외),303,28000,15,7211400
+2026-03,에센셜 마스크팩(10매),올리브영,844,15000,15,10761000
+2026-03,에센셜 마스크팩(10매),자사몰,391,15000,0,5865000
+2026-03,에센셜 마스크팩(10매),쿠팡,546,15000,0,8190000
+2026-03,에센셜 마스크팩(10매),아마존(해외),595,15000,20,7140000
+2026-03,약산성 클렌징폼,올리브영,733,12000,5,8356200
+2026-03,약산성 클렌징폼,자사몰,308,12000,10,3326400
+2026-03,약산성 클렌징폼,쿠팡,425,12000,20,4080000
+2026-03,약산성 클렌징폼,아마존(해외),389,12000,0,4668000
+2026-04,데일리 선크림,올리브영,968,19000,20,14713600
+2026-04,데일리 선크림,자사몰,554,19000,0,10526000
+2026-04,데일리 선크림,쿠팡,710,19000,5,12815500
+2026-04,데일리 선크림,아마존(해외),835,19000,20,12692000
+2026-04,진정 시카 앰플,올리브영,680,24000,10,14688000
+2026-04,진정 시카 앰플,자사몰,261,24000,5,5950800
+2026-04,진정 시카 앰플,쿠팡,503,24000,5,11468400
+2026-04,진정 시카 앰플,아마존(해외),396,24000,5,9028800
+2026-04,수분 장벽 크림,올리브영,406,28000,0,11368000
+2026-04,수분 장벽 크림,자사몰,204,28000,10,5140800
+2026-04,수분 장벽 크림,쿠팡,260,28000,0,7280000
+2026-04,수분 장벽 크림,아마존(해외),235,28000,0,6580000
+2026-04,에센셜 마스크팩(10매),올리브영,737,15000,10,9949500
+2026-04,에센셜 마스크팩(10매),자사몰,415,15000,0,6225000
+2026-04,에센셜 마스크팩(10매),쿠팡,591,15000,0,8865000
+2026-04,에센셜 마스크팩(10매),아마존(해외),489,15000,15,6234750
+2026-04,약산성 클렌징폼,올리브영,691,12000,20,6633600
+2026-04,약산성 클렌징폼,자사몰,347,12000,0,4164000
+2026-04,약산성 클렌징폼,쿠팡,513,12000,20,4924800
+2026-04,약산성 클렌징폼,아마존(해외),466,12000,15,4753200
+2026-05,데일리 선크림,올리브영,1416,19000,15,22868400
+2026-05,데일리 선크림,자사몰,590,19000,10,10089000
+2026-05,데일리 선크림,쿠팡,958,19000,5,17291900
+2026-05,데일리 선크림,아마존(해외),1103,19000,5,19909150
+2026-05,진정 시카 앰플,올리브영,662,24000,20,12710400
+2026-05,진정 시카 앰플,자사몰,308,24000,5,7022400
+2026-05,진정 시카 앰플,쿠팡,422,24000,20,8102400
+2026-05,진정 시카 앰플,아마존(해외),434,24000,10,9374400
+2026-05,수분 장벽 크림,올리브영,328,28000,10,8265600
+2026-05,수분 장벽 크림,자사몰,121,28000,5,3218600
+2026-05,수분 장벽 크림,쿠팡,221,28000,0,6188000
+2026-05,수분 장벽 크림,아마존(해외),247,28000,5,6570200
+2026-05,에센셜 마스크팩(10매),올리브영,751,15000,20,9012000
+2026-05,에센셜 마스크팩(10매),자사몰,396,15000,0,5940000
+2026-05,에센셜 마스크팩(10매),쿠팡,594,15000,20,7128000
+2026-05,에센셜 마스크팩(10매),아마존(해외),552,15000,0,8280000
+2026-05,약산성 클렌징폼,올리브영,747,12000,10,8067600
+2026-05,약산성 클렌징폼,자사몰,348,12000,10,3758400
+2026-05,약산성 클렌징폼,쿠팡,480,12000,10,5184000
+2026-05,약산성 클렌징폼,아마존(해외),587,12000,10,6339600
+2026-06,데일리 선크림,올리브영,1812,19000,20,27542400
+2026-06,데일리 선크림,자사몰,647,19000,5,11678350
+2026-06,데일리 선크림,쿠팡,1025,19000,5,18501250
+2026-06,데일리 선크림,아마존(해외),1108,19000,5,19999400
+2026-06,진정 시카 앰플,올리브영,520,24000,20,9984000
+2026-06,진정 시카 앰플,자사몰,281,24000,5,6406800
+2026-06,진정 시카 앰플,쿠팡,386,24000,20,7411200
+2026-06,진정 시카 앰플,아마존(해외),473,24000,15,9649200
+2026-06,수분 장벽 크림,올리브영,307,28000,5,8166200
+2026-06,수분 장벽 크림,자사몰,117,28000,10,2948400
+2026-06,수분 장벽 크림,쿠팡,170,28000,10,4284000
+2026-06,수분 장벽 크림,아마존(해외),189,28000,5,5027400
+2026-06,에센셜 마스크팩(10매),올리브영,905,15000,5,12896250
+2026-06,에센셜 마스크팩(10매),자사몰,329,15000,10,4441500
+2026-06,에센셜 마스크팩(10매),쿠팡,642,15000,0,9630000
+2026-06,에센셜 마스크팩(10매),아마존(해외),595,15000,15,7586250
+2026-06,약산성 클렌징폼,올리브영,718,12000,0,8616000
+2026-06,약산성 클렌징폼,자사몰,279,12000,10,3013200
+2026-06,약산성 클렌징폼,쿠팡,520,12000,15,5304000
+2026-06,약산성 클렌징폼,아마존(해외),584,12000,10,6307200
+2026-07,데일리 선크림,올리브영,1657,19000,15,26760550
+2026-07,데일리 선크림,자사몰,874,19000,10,14945400
+2026-07,데일리 선크림,쿠팡,1148,19000,10,19630800
+2026-07,데일리 선크림,아마존(해외),1216,19000,15,19638400
+2026-07,진정 시카 앰플,올리브영,623,24000,0,14952000
+2026-07,진정 시카 앰플,자사몰,323,24000,0,7752000
+2026-07,진정 시카 앰플,쿠팡,395,24000,20,7584000
+2026-07,진정 시카 앰플,아마존(해외),546,24000,10,11793600
+2026-07,수분 장벽 크림,올리브영,310,28000,15,7378000
+2026-07,수분 장벽 크림,자사몰,139,28000,5,3697400
+2026-07,수분 장벽 크림,쿠팡,200,28000,0,5600000
+2026-07,수분 장벽 크림,아마존(해외),191,28000,0,5348000
+2026-07,에센셜 마스크팩(10매),올리브영,878,15000,10,11853000
+2026-07,에센셜 마스크팩(10매),자사몰,391,15000,5,5571750
+2026-07,에센셜 마스크팩(10매),쿠팡,634,15000,0,9510000
+2026-07,에센셜 마스크팩(10매),아마존(해외),623,15000,20,7476000
+2026-07,약산성 클렌징폼,올리브영,668,12000,15,6813600
+2026-07,약산성 클렌징폼,자사몰,353,12000,0,4236000
+2026-07,약산성 클렌징폼,쿠팡,501,12000,15,5110200
+2026-07,약산성 클렌징폼,아마존(해외),627,12000,15,6395400
+2026-08,데일리 선크림,올리브영,1506,19000,15,24321900
+2026-08,데일리 선크림,자사몰,771,19000,10,13184100
+2026-08,데일리 선크림,쿠팡,1230,19000,10,21033000
+2026-08,데일리 선크림,아마존(해외),1333,19000,0,25327000
+2026-08,진정 시카 앰플,올리브영,670,24000,15,13668000
+2026-08,진정 시카 앰플,자사몰,296,24000,5,6748800
+2026-08,진정 시카 앰플,쿠팡,505,24000,15,10302000
+2026-08,진정 시카 앰플,아마존(해외),486,24000,20,9331200
+2026-08,수분 장벽 크림,올리브영,309,28000,0,8652000
+2026-08,수분 장벽 크림,자사몰,135,28000,10,3402000
+2026-08,수분 장벽 크림,쿠팡,210,28000,0,5880000
+2026-08,수분 장벽 크림,아마존(해외),222,28000,10,5594400
+2026-08,에센셜 마스크팩(10매),올리브영,964,15000,15,12291000
+2026-08,에센셜 마스크팩(10매),자사몰,455,15000,5,6483750
+2026-08,에센셜 마스크팩(10매),쿠팡,651,15000,10,8788500
+2026-08,에센셜 마스크팩(10매),아마존(해외),734,15000,0,11010000
+2026-08,약산성 클렌징폼,올리브영,829,12000,0,9948000
+2026-08,약산성 클렌징폼,자사몰,314,12000,0,3768000
+2026-08,약산성 클렌징폼,쿠팡,505,12000,20,4848000
+2026-08,약산성 클렌징폼,아마존(해외),608,12000,0,7296000
+2026-09,데일리 선크림,올리브영,1133,19000,0,21527000
+2026-09,데일리 선크림,자사몰,424,19000,0,8056000
+2026-09,데일리 선크림,쿠팡,672,19000,10,11491200
+2026-09,데일리 선크림,아마존(해외),791,19000,0,15029000
+2026-09,진정 시카 앰플,올리브영,637,24000,15,12994800
+2026-09,진정 시카 앰플,자사몰,235,24000,0,5640000
+2026-09,진정 시카 앰플,쿠팡,466,24000,20,8947200
+2026-09,진정 시카 앰플,아마존(해외),451,24000,0,10824000
+2026-09,수분 장벽 크림,올리브영,425,28000,10,10710000
+2026-09,수분 장벽 크림,자사몰,200,28000,5,5320000
+2026-09,수분 장벽 크림,쿠팡,345,28000,0,9660000
+2026-09,수분 장벽 크림,아마존(해외),369,28000,0,10332000
+2026-09,에센셜 마스크팩(10매),올리브영,888,15000,10,11988000
+2026-09,에센셜 마스크팩(10매),자사몰,307,15000,5,4374750
+2026-09,에센셜 마스크팩(10매),쿠팡,638,15000,0,9570000
+2026-09,에센셜 마스크팩(10매),아마존(해외),768,15000,0,11520000
+2026-09,약산성 클렌징폼,올리브영,739,12000,10,7981200
+2026-09,약산성 클렌징폼,자사몰,354,12000,10,3823200
+2026-09,약산성 클렌징폼,쿠팡,537,12000,10,5799600
+2026-09,약산성 클렌징폼,아마존(해외),616,12000,0,7392000
+2026-10,데일리 선크림,올리브영,773,19000,5,13952650
+2026-10,데일리 선크림,자사몰,317,19000,5,5721850
+2026-10,데일리 선크림,쿠팡,541,19000,0,10279000
+2026-10,데일리 선크림,아마존(해외),668,19000,10,11422800
+2026-10,진정 시카 앰플,올리브영,573,24000,0,13752000
+2026-10,진정 시카 앰플,자사몰,321,24000,5,7318800
+2026-10,진정 시카 앰플,쿠팡,376,24000,0,9024000
+2026-10,진정 시카 앰플,아마존(해외),536,24000,0,12864000
+2026-10,수분 장벽 크림,올리브영,655,28000,0,18340000
+2026-10,수분 장벽 크림,자사몰,277,28000,10,6980400
+2026-10,수분 장벽 크림,쿠팡,432,28000,10,10886400
+2026-10,수분 장벽 크림,아마존(해외),436,28000,15,10376800
+2026-10,에센셜 마스크팩(10매),올리브영,776,15000,10,10476000
+2026-10,에센셜 마스크팩(10매),자사몰,376,15000,5,5358000
+2026-10,에센셜 마스크팩(10매),쿠팡,528,15000,20,6336000
+2026-10,에센셜 마스크팩(10매),아마존(해외),675,15000,0,10125000
+2026-10,약산성 클렌징폼,올리브영,772,12000,20,7411200
+2026-10,약산성 클렌징폼,자사몰,340,12000,10,3672000
+2026-10,약산성 클렌징폼,쿠팡,530,12000,10,5724000
+2026-10,약산성 클렌징폼,아마존(해외),558,12000,15,5691600
+</script>
+<script>
+(() => {
+  const SHEET_ID = '1-zBK50MV6uZAbrAM4yd0IuwRC2TIXc7LE3yf2MaYs9c';
+  const GID = '581964629';
+  const LIVE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+  const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit#gid=${GID}`;
+  const SEED_DATE = '2026-11-20';
+  const COLS = { month: '월', product: '제품', channel: '채널', qty: '판매수량', price: '정가(원)', disc: '할인율(%)', rev: '매출(원)' };
+  const DIMS = ['month', 'product', 'channel'];
+  const DIM_KO = { month: '월', product: '제품', channel: '채널' };
+  const SERIES = ['--s1', '--s2', '--s3', '--s4', '--s5'];
+  const SEQ = ['--q1', '--q2', '--q3', '--q4', '--q5', '--q6', '--q7'];
+
+  let DATA = [];
+  let ORDER = { month: [], product: [], channel: [] };
+  const sel = { month: new Set(), product: new Set(), channel: new Set() };
+  let colorBy = 'product';
+  let sort = { key: 'month', dir: 1 };
+
+  const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // ---------- Formatting ----------
+  const nf = new Intl.NumberFormat('ko-KR');
+  const won = (v) => nf.format(Math.round(v)) + '원';
+  function short(v) {
+    if (Math.abs(v) >= 1e8) return (v / 1e8).toFixed(2).replace(/\.?0+$/, '') + '억';
+    if (Math.abs(v) >= 1e4) return nf.format(Math.round(v / 1e4)) + '만';
+    return nf.format(Math.round(v));
+  }
+  const monthKo = (m) => { const [y, mm] = m.split('-'); return `${+mm}월`; };
+  const monthLong = (m) => { const [y, mm] = m.split('-'); return `${y}년 ${+mm}월`; };
+  const pct = (v, d = 1) => (v * 100).toFixed(d) + '%';
+
+  // ---------- Data ----------
+  function parseCSV(text) {
+    const rows = []; let row = [], f = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; }
+      else if (c !== '\r') f += c;
+    }
+    if (f !== '' || row.length) { row.push(f); rows.push(row); }
+    return rows.filter((r) => r.some((x) => x.trim() !== ''));
+  }
+  function toRecords(text) {
+    const rows = parseCSV(text.trim());
+    const head = rows[0].map((s) => s.trim());
+    const idx = {};
+    for (const k in COLS) { idx[k] = head.indexOf(COLS[k]); if (idx[k] < 0) throw new Error('열 없음: ' + COLS[k]); }
+    const num = (s) => Number(String(s).replace(/[^0-9.\-]/g, '')) || 0;
+    return rows.slice(1).map((r) => ({
+      month: r[idx.month].trim(), product: r[idx.product].trim(), channel: r[idx.channel].trim(),
+      qty: num(r[idx.qty]), price: num(r[idx.price]), disc: num(r[idx.disc]), rev: num(r[idx.rev]),
+    })).filter((r) => r.month && r.product && r.channel);
+  }
+  function setData(recs) {
+    DATA = recs;
+    ORDER.month = [...new Set(recs.map((r) => r.month))].sort();
+    ORDER.product = [...new Set(recs.map((r) => r.product))];
+    ORDER.channel = [...new Set(recs.map((r) => r.channel))];
+    for (const d of DIMS) for (const v of [...sel[d]]) if (!ORDER[d].includes(v)) sel[d].delete(v);
+  }
+  const colorOf = (dim, v) => css(SERIES[ORDER[dim].indexOf(v) % SERIES.length]);
+  function filtered(...except) {
+    return DATA.filter((r) => DIMS.every((d) => except.includes(d) || sel[d].size === 0 || sel[d].has(r[d])));
+  }
+  function sumBy(rows, key, val = 'rev') {
+    const m = new Map();
+    for (const r of rows) m.set(r[key], (m.get(r[key]) || 0) + r[val]);
+    return m;
+  }
+  const total = (rows, k = 'rev') => rows.reduce((a, r) => a + r[k], 0);
+
+  // ---------- Selection ----------
+  function toggle(dim, v) { sel[dim].has(v) ? sel[dim].delete(v) : sel[dim].add(v); render(); }
+  function only(dim, v) {
+    if (sel[dim].size === 1 && sel[dim].has(v)) sel[dim].clear(); else { sel[dim].clear(); sel[dim].add(v); }
+    render();
+  }
+
+  // ---------- Tooltip ----------
+  const tip = $('tip');
+  function showTip(ev, html) {
+    tip.innerHTML = html; tip.classList.add('show');
+    const pad = 12, r = tip.getBoundingClientRect();
+    let x = ev.clientX + pad, y = ev.clientY + pad;
+    if (ev.clientX === undefined) { const b = ev.target.getBoundingClientRect(); x = b.right + pad; y = b.top; }
+    if (x + r.width > innerWidth - 8) x = (ev.clientX ?? innerWidth) - r.width - pad;
+    if (y + r.height > innerHeight - 8) y = innerHeight - r.height - 8;
+    tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+  }
+  const hideTip = () => tip.classList.remove('show');
+  const tipRow = (label, val, color, cls = '') =>
+    `<div class="r ${cls}"><span>${color ? `<i style="background:${color}"></i>` : ''}${esc(label)}</span><b>${val}</b></div>`;
+
+  // ---------- Filters ----------
+  function renderFilters() {
+    for (const d of DIMS) {
+      const box = $('f-' + d);
+      const all = `<button type="button" class="chip" data-d="${d}" data-all="1" aria-pressed="${sel[d].size === 0}">전체</button>`;
+      box.innerHTML = all + ORDER[d].map((v) => {
+        const dot = d === 'month' ? '' : `<span class="dot" style="background:${colorOf(d, v)}"></span>`;
+        return `<button type="button" class="chip" data-d="${d}" data-v="${esc(v)}" aria-pressed="${sel[d].has(v)}">${dot}${esc(d === 'month' ? monthKo(v) : v)}</button>`;
+      }).join('');
+    }
+    const parts = DIMS.filter((d) => sel[d].size).map((d) => `${DIM_KO[d]} ${sel[d].size}개`);
+    $('fsummary').textContent = parts.length ? `적용 중: ${parts.join(' · ')}` : '차트의 막대·셀을 클릭해도 필터가 걸립니다.';
+  }
+  document.querySelector('.filters').addEventListener('click', (e) => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const d = b.dataset.d;
+    if (b.dataset.all) { sel[d].clear(); render(); } else toggle(d, b.dataset.v);
+  });
+  $('reset').addEventListener('click', () => { DIMS.forEach((d) => sel[d].clear()); render(); });
+
+  // ---------- KPIs ----------
+  function renderKPIs() {
+    const rows = filtered();
+    const rev = total(rows), qty = total(rows, 'qty');
+    const list = rows.reduce((a, r) => a + r.price * r.qty, 0);
+    const disc = list ? 1 - rev / list : 0;
+    const avg = qty ? rev / qty : 0;
+
+    // Month-over-month: last active month vs. the month before it (same product/channel filters)
+    const months = sel.month.size ? ORDER.month.filter((m) => sel.month.has(m)) : ORDER.month;
+    const last = months[months.length - 1];
+    const prev = ORDER.month[ORDER.month.indexOf(last) - 1];
+    const base = filtered('month');
+    let mom = '';
+    if (last && prev) {
+      const a = total(base.filter((r) => r.month === last)), b = total(base.filter((r) => r.month === prev));
+      if (b) {
+        const ch = a / b - 1, up = ch >= 0;
+        mom = `<span class="${up ? 'up' : 'down'}">${up ? '▲' : '▼'} ${pct(Math.abs(ch))}</span> ${monthKo(last)} 전월 대비`;
+      }
+    }
+    const top = [...sumBy(rows, 'product')].sort((a, b) => b[1] - a[1])[0];
+    $('kpis').innerHTML = [
+      ['총 매출', short(rev) + '원', mom || won(rev)],
+      ['판매수량', nf.format(qty) + '개', `${filtered().length}개 행 합계`],
+      ['평균 할인율', pct(disc), `정가 기준 ${short(list - rev)}원 할인`],
+      ['최고 매출 제품', top ? top[0] : '—', top ? `${short(top[1])}원 · 비중 ${pct(top[1] / rev)}` : '—'],
+    ].map(([k, v, d]) => `<div class="kpi"><div class="k">${k}</div><div class="v" title="${esc(v)}">${esc(v)}</div><div class="d">${d}</div></div>`).join('');
+    $('period').innerHTML = `${monthLong(ORDER.month[0])} – ${monthLong(ORDER.month[ORDER.month.length - 1])} · 객단가 ${won(avg)} · <a href="${SHEET_URL}" target="_blank" rel="noopener">원본 시트</a>`;
+  }
+
+  // ---------- Monthly stacked columns ----------
+  const NS = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function niceStep(max, n = 4) {
+    const raw = max / n, p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  function topRounded(x, y, w, h, r) {
+    r = Math.min(r, h, w / 2);
+    return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+  }
+  function renderMonthly() {
+    const box = $('monthly');
+    const rows = filtered('month');
+    const keys = ORDER[colorBy].filter((k) => rows.some((r) => r[colorBy] === k));
+    $('m-legend').innerHTML = keys.map((k) => `<span><i style="background:${colorOf(colorBy, k)}"></i>${esc(k)}</span>`).join('');
+
+    const data = ORDER.month.map((m) => {
+      const rs = rows.filter((r) => r.month === m);
+      const parts = keys.map((k) => ({ k, v: total(rs.filter((r) => r[colorBy] === k)) }));
+      return { m, parts, sum: parts.reduce((a, p) => a + p.v, 0) };
+    });
+    const W = Math.max(300, box.clientWidth), H = 300;
+    const M = { l: 52, r: 8, t: 22, b: 28 };
+    const pw = W - M.l - M.r, ph = H - M.t - M.b;
+    const maxV = Math.max(1, ...data.map((d) => d.sum));
+    const step = niceStep(maxV), yMax = Math.ceil(maxV / step) * step;
+    const y = (v) => M.t + ph - (v / yMax) * ph;
+    const band = pw / data.length, bw = Math.min(44, band * 0.62);
+
+    box.innerHTML = '';
+    const svg = svgEl('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '월별 매출 누적 막대 차트' }, box);
+    for (let v = 0; v <= yMax + 1e-6; v += step) {
+      svgEl('line', { x1: M.l, x2: W - M.r, y1: y(v), y2: y(v), stroke: v === 0 ? css('--axis') : css('--grid'), 'stroke-width': 1 }, svg);
+      svgEl('text', { x: M.l - 8, y: y(v) + 4, 'text-anchor': 'end', class: 'axis-label' }, svg).textContent = v === 0 ? '0' : short(v);
+    }
+    const peak = data.reduce((a, d) => (d.sum > a.sum ? d : a), data[0]);
+    const surface = css('--surface');
+    data.forEach((d, i) => {
+      const cx = M.l + band * i + band / 2, x = cx - bw / 2;
+      const dim = sel.month.size && !sel.month.has(d.m);
+      const g = svgEl('g', { opacity: dim ? 0.3 : 1 }, svg);
+      let acc = 0;
+      const nz = d.parts.filter((p) => p.v > 0);
+      nz.forEach((p, j) => {
+        const y0 = y(acc), y1 = y(acc + p.v); acc += p.v;
+        const isTop = j === nz.length - 1;
+        const h = Math.max(0, y0 - y1 - (isTop ? 0 : 2));
+        const top = y0 - h;
+        if (isTop) svgEl('path', { d: topRounded(x, top, bw, h, 4), fill: colorOf(colorBy, p.k) }, g);
+        else svgEl('rect', { x, y: top, width: bw, height: h, fill: colorOf(colorBy, p.k) }, g);
+      });
+      svgEl('text', { x: cx, y: H - 8, 'text-anchor': 'middle', class: 'axis-label', 'font-weight': sel.month.has(d.m) ? 700 : 400 }, svg).textContent = monthKo(d.m);
+      if (d === peak && d.sum > 0) svgEl('text', { x: cx, y: y(d.sum) - 6, 'text-anchor': 'middle', class: 'val-label' }, svg).textContent = short(d.sum);
+
+      const hit = svgEl('rect', { x: M.l + band * i, y: M.t, width: band, height: ph, class: 'hit', tabindex: 0, role: 'button', 'aria-label': `${monthLong(d.m)} 매출 ${won(d.sum)}` }, svg);
+      const html = () => `<div class="t">${monthLong(d.m)}</div>` +
+        [...d.parts].reverse().filter((p) => p.v > 0).map((p) => tipRow(p.k, short(p.v) + '원', colorOf(colorBy, p.k))).join('') +
+        tipRow('합계', won(d.sum), null, 'total');
+      hit.addEventListener('mousemove', (e) => showTip(e, html()));
+      hit.addEventListener('mouseleave', hideTip);
+      hit.addEventListener('focus', (e) => showTip(e, html()));
+      hit.addEventListener('blur', hideTip);
+      hit.addEventListener('click', () => { hideTip(); toggle('month', d.m); });
+      hit.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle('month', d.m); } });
+    });
+  }
+
+  // ---------- Bar lists ----------
+  function renderBarList(dim) {
+    const rows = filtered(dim);
+    const sums = sumBy(rows, dim), qtys = sumBy(rows, dim, 'qty');
+    const tot = total(rows) || 1;
+    const items = ORDER[dim].map((k) => ({ k, v: sums.get(k) || 0, q: qtys.get(k) || 0 })).sort((a, b) => b.v - a.v);
+    const max = Math.max(1, ...items.map((i) => i.v));
+    const box = $('by-' + dim);
+    box.innerHTML = items.map((i) => {
+      const on = sel[dim].has(i.k), off = sel[dim].size && !on;
+      return `<button type="button" class="brow ${on ? 'on' : ''} ${off ? 'off' : ''}" data-k="${esc(i.k)}" aria-pressed="${on}">
+        <div class="top"><span class="name">${esc(i.k)}</span><span class="num"><b>${short(i.v)}원</b> · ${pct(i.v / tot)}</span></div>
+        <div class="track"><div class="bar" style="width:${(i.v / max) * 100}%;background:${colorOf(dim, i.k)}"></div></div>
+      </button>`;
+    }).join('');
+    box.querySelectorAll('.brow').forEach((b) => {
+      const it = items.find((i) => i.k === b.dataset.k);
+      const html = () => `<div class="t">${esc(it.k)}</div>` + tipRow('매출', won(it.v)) + tipRow('판매수량', nf.format(it.q) + '개') + tipRow('비중', pct(it.v / tot));
+      b.addEventListener('mousemove', (e) => showTip(e, html()));
+      b.addEventListener('mouseleave', hideTip);
+      b.addEventListener('click', () => { hideTip(); toggle(dim, it.k); });
+    });
+  }
+
+  // ---------- Heatmap ----------
+  function renderHeat() {
+    const rows = filtered('product', 'channel');
+    const P = ORDER.product, C = ORDER.channel;
+    const val = (p, c) => total(rows.filter((r) => r.product === p && r.channel === c));
+    const vals = P.map((p) => C.map((c) => val(p, c)));
+    const flat = vals.flat(), lo = Math.min(...flat), hi = Math.max(...flat);
+    const stepOf = (v) => (hi === lo ? 3 : Math.min(6, Math.floor(((v - lo) / (hi - lo)) * 7)));
+    const box = $('heat');
+    box.style.gridTemplateColumns = `max-content repeat(${C.length}, minmax(72px, 1fr)) minmax(64px, auto)`;
+    let h = `<div></div>` + C.map((c) => `<div class="hh">${esc(c)}</div>`).join('') + `<div class="hh">합계</div>`;
+    P.forEach((p, i) => {
+      h += `<div class="rh">${esc(p)}</div>`;
+      C.forEach((c, j) => {
+        const v = vals[i][j], s = stepOf(v);
+        const isSel = sel.product.has(p) && sel.channel.has(c);
+        const off = (sel.product.size && !sel.product.has(p)) || (sel.channel.size && !sel.channel.has(c));
+        h += `<button type="button" class="cell ${isSel ? 'sel' : ''} ${off ? 'off' : ''}" data-p="${esc(p)}" data-c="${esc(c)}" data-v="${v}"
+          style="background:var(${SEQ[s]});color:${s >= 3 ? '#ffffff' : '#0b0b0b'}" aria-label="${esc(p)} ${esc(c)} ${won(v)}">${short(v)}</button>`;
+      });
+      h += `<div class="tot">${short(vals[i].reduce((a, b) => a + b, 0))}</div>`;
+    });
+    h += `<div class="rh" style="color:var(--ink-2);font-weight:600">합계</div>` +
+      C.map((c, j) => `<div class="tot">${short(P.reduce((a, p, i) => a + vals[i][j], 0))}</div>`).join('') +
+      `<div class="tot" style="font-weight:600;color:var(--ink)">${short(flat.reduce((a, b) => a + b, 0))}</div>`;
+    box.innerHTML = h;
+    const grand = flat.reduce((a, b) => a + b, 0) || 1;
+    box.querySelectorAll('.cell').forEach((b) => {
+      const { p, c } = b.dataset, v = +b.dataset.v;
+      const html = () => `<div class="t">${esc(p)} · ${esc(c)}</div>` + tipRow('매출', won(v)) + tipRow('전체 대비', pct(v / grand));
+      b.addEventListener('mousemove', (e) => showTip(e, html()));
+      b.addEventListener('mouseleave', hideTip);
+      b.addEventListener('click', () => {
+        hideTip();
+        const same = sel.product.size === 1 && sel.product.has(p) && sel.channel.size === 1 && sel.channel.has(c);
+        sel.product.clear(); sel.channel.clear();
+        if (!same) { sel.product.add(p); sel.channel.add(c); }
+        render();
+      });
+    });
+    $('ramp').innerHTML = SEQ.map((s) => `<i style="background:var(${s})"></i>`).join('');
+  }
+
+  // ---------- Table ----------
+  const TCOLS = [
+    ['month', '월'], ['product', '제품'], ['channel', '채널'],
+    ['qty', '판매수량', true], ['price', '정가', true], ['disc', '할인율', true], ['rev', '매출', true],
+  ];
+  function renderTable() {
+    const rows = filtered().slice().sort((a, b) => {
+      const x = a[sort.key], y = b[sort.key];
+      return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ko')) * sort.dir;
+    });
+    const t = $('table');
+    t.tHead.innerHTML = '<tr>' + TCOLS.map(([k, l, n]) =>
+      `<th class="${n ? 'num' : ''}" data-k="${k}" tabindex="0" aria-sort="${sort.key === k ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none'}">${l}</th>`).join('') + '</tr>';
+    t.tBodies[0].innerHTML = rows.map((r) => `<tr>
+      <td>${monthLong(r.month)}</td>
+      <td><span class="dot" style="background:${colorOf('product', r.product)}"></span>${esc(r.product)}</td>
+      <td><span class="dot" style="background:${colorOf('channel', r.channel)}"></span>${esc(r.channel)}</td>
+      <td class="num">${nf.format(r.qty)}</td><td class="num">${nf.format(r.price)}</td>
+      <td class="num">${r.disc}%</td><td class="num">${nf.format(r.rev)}</td></tr>`).join('');
+    $('tcount').textContent = `${rows.length}개 행 · 합계 ${won(total(rows))} · 머리글을 클릭해 정렬`;
+  }
+  $('table').addEventListener('click', (e) => {
+    const th = e.target.closest('th'); if (!th) return;
+    const k = th.dataset.k;
+    sort = { key: k, dir: sort.key === k ? -sort.dir : (['qty', 'price', 'disc', 'rev'].includes(k) ? -1 : 1) };
+    renderTable();
+  });
+  $('table').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('th')) e.target.click(); });
+
+  // ---------- Wiring ----------
+  document.querySelector('.seg').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    colorBy = b.dataset.by;
+    document.querySelectorAll('.seg button').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    renderMonthly();
+  });
+  function render() {
+    if (!DATA.length) return;
+    renderFilters(); renderKPIs(); renderMonthly(); renderBarList('product'); renderBarList('channel'); renderHeat(); renderTable();
+  }
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderMonthly, 120); });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+
+  async function loadLive() {
+    $('status').textContent = '시트에서 불러오는 중…';
+    try {
+      const res = await fetch(LIVE_URL + '&t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error(res.status);
+      const recs = toRecords(await res.text());
+      if (!recs.length) throw new Error('empty');
+      setData(recs); render();
+      const t = new Date();
+      $('status').textContent = `실시간 시트 데이터 · ${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')} 기준`;
+    } catch (err) {
+      $('status').textContent = `시트 연결 실패 – 내장 데이터 사용 (${SEED_DATE} 기준)`;
+    }
+  }
+  $('reload').addEventListener('click', loadLive);
+
+  setData(toRecords($('seed').textContent));
+  render();
+  $('status').textContent = `내장 데이터 (${SEED_DATE} 기준)`;
+  loadLive();
+})();
+</script>
+</body>
+</html>
