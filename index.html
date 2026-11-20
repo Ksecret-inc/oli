@@ -770,7 +770,8 @@ td .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; ma
       const t = new Date();
       $('status').textContent = `실시간 시트 데이터 · ${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')} 기준`;
     } catch (err) {
-      $('status').textContent = `시트 연결 실패 – 내장 데이터 사용 (${SEED_DATE} 기준)`;
+      $('status').textContent = `내장 데이터 (${SEED_DATE} 기준)`;
+      $('status').title = '이 환경에서는 구글 시트를 실시간으로 불러올 수 없어 저장된 데이터를 표시합니다.';
     }
   }
   $('reload').addEventListener('click', loadLive);
